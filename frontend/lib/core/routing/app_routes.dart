@@ -6,4 +6,3 @@ class AppRoutes {
   static const String showcase = '/showcase';
   static const String notFound = '/404';
 }
-

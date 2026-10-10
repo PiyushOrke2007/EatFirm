@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 export interface ApiMeta {
   requestId: string;
@@ -121,5 +121,29 @@ export function sendPaginated<T>(
     },
   };
   return res.status(200).json(responseBody);
+}
+
+/**
+ * Standard pagination query parameter parser adhering to bounded pagination requirements.
+ * Clamps page >= 1, and 1 <= limit <= maxLimit (default max 100).
+ */
+export function parsePagination(
+  req: Request,
+  defaultLimit = 20,
+  maxLimit = 100
+): { page: number; limit: number; offset: number } {
+  const rawPage = parseInt(req.query.page as string, 10);
+  const rawLimit = parseInt(req.query.limit as string, 10);
+
+  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  let limit = Number.isInteger(rawLimit) && rawLimit > 0 ? rawLimit : defaultLimit;
+
+  if (limit > maxLimit) {
+    limit = maxLimit;
+  }
+
+  const offset = (page - 1) * limit;
+
+  return { page, limit, offset };
 }
 

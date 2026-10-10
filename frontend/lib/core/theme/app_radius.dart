@@ -25,4 +25,3 @@ class AppRadius {
   static const BorderRadius brXl = BorderRadius.all(rXl);
   static const BorderRadius brPill = BorderRadius.all(rPill);
 }
-

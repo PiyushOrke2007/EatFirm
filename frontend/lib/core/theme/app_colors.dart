@@ -58,4 +58,3 @@ class AppColors {
   // Focus Indicator
   static const Color focusRing = Color(0xFFFF5722);
 }
-

@@ -205,9 +205,11 @@ class _FoundationShowcaseScreenState extends State<FoundationShowcaseScreen> {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                'EatFirm Foundation Baseline',
-                style: AppTypography.headline.copyWith(color: Colors.white),
+              Expanded(
+                child: Text(
+                  'EatFirm Foundation Baseline',
+                  style: AppTypography.headline.copyWith(color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -231,15 +233,19 @@ class _FoundationShowcaseScreenState extends State<FoundationShowcaseScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.cloud_done, color: AppColors.primary),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(
-                    'Backend & Infrastructure Readiness',
-                    style: AppTypography.title,
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_done, color: AppColors.primary),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        'Backend & Infrastructure Readiness',
+                        style: AppTypography.title,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               IconButton(
                 icon: _isCheckingBackend

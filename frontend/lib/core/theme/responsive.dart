@@ -82,4 +82,3 @@ class MaxWidthContainer extends StatelessWidget {
     );
   }
 }
-

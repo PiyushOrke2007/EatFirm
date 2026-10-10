@@ -24,6 +24,7 @@ class NavigationShellScreen extends StatelessWidget {
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:
+      case 1:
         context.go('/showcase');
         break;
     }
@@ -76,6 +77,11 @@ class NavigationShellScreen extends StatelessWidget {
                   selectedIcon: Icon(Icons.dashboard, color: AppColors.primary),
                   label: Text('Foundations'),
                 ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.cloud_done_outlined),
+                  selectedIcon: Icon(Icons.cloud_done, color: AppColors.primary),
+                  label: Text('Readiness'),
+                ),
               ],
             ),
             const VerticalDivider(thickness: 1, width: 1),
@@ -92,22 +98,18 @@ class NavigationShellScreen extends StatelessWidget {
         onDestinationSelected: (idx) => _onItemTapped(idx, context),
         indicatorColor: AppColors.primaryLight,
         destinations: const [
-          NavigationRequestDestination(
+          NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard, color: AppColors.primary),
             label: 'Foundations',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.cloud_done_outlined),
+            selectedIcon: Icon(Icons.cloud_done, color: AppColors.primary),
+            label: 'Readiness',
           ),
         ],
       ),
     );
   }
-}
-
-class NavigationRequestDestination extends NavigationDestination {
-  const NavigationRequestDestination({
-    super.key,
-    required super.icon,
-    super.selectedIcon,
-    required super.label,
-  });
 }
