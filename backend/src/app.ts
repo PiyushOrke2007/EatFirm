@@ -5,6 +5,8 @@ import { requestIdMiddleware } from './middleware/requestId.js';
 import { requestLoggerMiddleware } from './middleware/requestLogger.js';
 import { errorHandler, NotFoundError } from './middleware/errorHandler.js';
 import { healthRouter } from './routes/health.js';
+import { authRouter } from './routes/auth.js';
+import { authenticateToken } from './middleware/authGuard.js';
 
 export function createApp(): Express {
   const app = express();
@@ -30,8 +32,12 @@ export function createApp(): Express {
   app.use(requestIdMiddleware);
   app.use(requestLoggerMiddleware);
 
+  // Decode JWT and attach session user if provided
+  app.use(authenticateToken);
+
   // Versioned API Routes (/api/v1)
   app.use('/api/v1', healthRouter);
+  app.use('/api/v1', authRouter);
 
   // Fallback for undefined routes
   app.use((req: Request, _res: Response, next: NextFunction) => {

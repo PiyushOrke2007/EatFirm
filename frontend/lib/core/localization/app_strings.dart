@@ -71,4 +71,61 @@ class AppStrings {
 
   // Currency
   static const String currencySymbol = '₹';
+
+  // Module 02: Authentication & RBAC
+  static const String login = 'Sign In';
+  static const String loginTitle = 'Welcome Back';
+  static const String loginSubtitle = 'Sign in to continue to EatFirm';
+  static const String loginButton = 'Sign In';
+  static const String register = 'Create Account';
+  static const String registerTitle = 'Join EatFirm';
+  static const String registerSubtitle =
+      'Select your role and start your gourmet journey';
+  static const String registerButton = 'Create Account';
+  static const String logout = 'Log Out';
+  static const String logoutConfirmTitle = 'Confirm Logout';
+  static const String logoutConfirmMessage =
+      'Are you sure you want to end your current session?';
+  static const String forgotPassword = 'Forgot Password?';
+  static const String forgotPasswordTitle = 'Reset Password';
+  static const String forgotPasswordSubtitle =
+      'Enter your registered email or phone to receive a 6-digit code';
+  static const String sendResetCode = 'Send Reset Code';
+  static const String resetPassword = 'Set New Password';
+  static const String resetPasswordSubtitle =
+      'Enter the code and choose a secure new password';
+  static const String verifyOtp = 'Verify Code';
+  static const String verifyOtpSubtitle =
+      'Enter the 6-digit verification code sent to:';
+  static const String resendOtp = 'Resend Code';
+  static const String otpCode = 'Verification Code';
+  static const String newPassword = 'New Password';
+  static const String acceptTerms =
+      'I agree to the Terms of Service and Privacy Policy';
+  static const String roleCustomer = 'Customer';
+  static const String roleRestaurant = 'Restaurant Partner';
+  static const String roleDelivery = 'Delivery Partner';
+  static const String roleAdmin = 'System Admin';
+  static const String roleSelectorLabel = 'I want to register as a:';
+  static const String selectRole = 'Select Role';
+  static const String alreadyHaveAccount = 'Already have an account? Sign In';
+  static const String dontHaveAccount = "Don't have an account? Register";
+  static const String profileTitle = 'My Profile';
+  static const String accessDenied = 'Access Denied';
+  static const String accessDeniedSubtitle =
+      'You do not have permission to access this resource or page.';
+  static const String editProfile = 'Edit Profile';
+  static const String updateProfile = 'Update Profile';
+  static const String verified = 'Verified';
+  static const String unverified = 'Unverified (OTP Pending)';
+  static const String identifier = 'Email or Phone Number';
+  static const String identifierPlaceholder = 'user@example.com or 9876543210';
+  static const String passwordHint = 'Min 8 chars, uppercase, number & symbol';
+  static const String invalidCredentials = 'Invalid email/phone or password';
+  static const String termsRequired =
+      'You must accept the Terms of Service to continue';
+  static const String codeRequired =
+      'Please enter the 6-digit verification code';
+  static const String sessionExpired =
+      'Your session has expired. Please log in again.';
 }

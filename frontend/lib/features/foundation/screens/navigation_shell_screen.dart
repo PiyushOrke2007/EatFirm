@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_strings.dart';
+import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/responsive.dart';
-import '../../../core/constants/app_constants.dart';
 
 /// Responsive navigation shell providing Desktop side navigation rail
 /// and Mobile bottom navigation bar.
@@ -15,8 +17,10 @@ class NavigationShellScreen extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/showcase')) {
-      return 0;
+    if (location.startsWith(AppRoutes.profile) ||
+        location.startsWith(AppRoutes.login) ||
+        location.startsWith(AppRoutes.register)) {
+      return 1;
     }
     return 0;
   }
@@ -24,8 +28,10 @@ class NavigationShellScreen extends StatelessWidget {
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:
+        context.go(AppRoutes.showcase);
+        break;
       case 1:
-        context.go('/showcase');
+        context.go(AppRoutes.profile);
         break;
     }
   }
@@ -78,9 +84,9 @@ class NavigationShellScreen extends StatelessWidget {
                   label: Text('Foundations'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.cloud_done_outlined),
-                  selectedIcon: Icon(Icons.cloud_done, color: AppColors.primary),
-                  label: Text('Readiness'),
+                  icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person, color: AppColors.primary),
+                  label: Text(AppStrings.navProfile),
                 ),
               ],
             ),
@@ -104,9 +110,9 @@ class NavigationShellScreen extends StatelessWidget {
             label: 'Foundations',
           ),
           NavigationDestination(
-            icon: Icon(Icons.cloud_done_outlined),
-            selectedIcon: Icon(Icons.cloud_done, color: AppColors.primary),
-            label: 'Readiness',
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person, color: AppColors.primary),
+            label: AppStrings.navProfile,
           ),
         ],
       ),

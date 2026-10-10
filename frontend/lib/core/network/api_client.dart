@@ -121,6 +121,23 @@ class ApiClient {
     );
   }
 
+  Future<ApiResponse<T>> patch<T>(
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+    T Function(dynamic json)? fromJson,
+  }) async {
+    return _sendRequest<T>(
+      method: 'PATCH',
+      path: path,
+      body: body,
+      queryParameters: queryParameters,
+      headers: headers,
+      fromJson: fromJson,
+    );
+  }
+
   Future<ApiResponse<T>> delete<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
