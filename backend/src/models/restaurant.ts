@@ -40,9 +40,52 @@ export interface Restaurant {
   approvalStatus: RestaurantApprovalStatus;
   rejectionReason: string | null;
   isOpen: boolean;
+  latitude?: number;
+  longitude?: number;
+  averageRating?: number | null;
+  ratingCount?: number;
+  estimatedDeliveryMins?: number;
+  priceTier?: string;
+  distanceKm?: number;
   createdAt: string;
   updatedAt: string;
   operatingHours?: OperatingHour[];
+}
+
+export type BrowseSortOption =
+  | 'relevance'
+  | 'rating_desc'
+  | 'distance_asc'
+  | 'delivery_time_asc'
+  | 'cost_low_to_high'
+  | 'cost_high_to_low';
+
+export interface BrowseRestaurantsQuery {
+  search?: string;
+  cuisine?: string;
+  minRating?: number;
+  maxDistanceKm?: number;
+  maxDeliveryMins?: number;
+  priceTier?: string;
+  vegOnly?: boolean;
+  isOpenOnly?: boolean;
+  latitude?: number;
+  longitude?: number;
+  sortBy?: BrowseSortOption;
+  page?: number;
+  limit?: number;
+}
+
+export interface SearchSuggestion {
+  type: 'restaurant' | 'dish' | 'cuisine';
+  text: string;
+  subtext?: string;
+  id?: string;
+}
+
+export interface CustomerRestaurantDetails extends Restaurant {
+  categories: (MenuCategory & { items: MenuItem[] })[];
+  featuredItems?: MenuItem[];
 }
 
 export interface MenuCategory {

@@ -390,6 +390,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
 
+                // Customer Portal (Module 04: Discovery & Food Search)
+                if (user.role == UserRole.customer) ...[
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Food & Restaurant Discovery',
+                            style: AppTypography.title),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Explore popular restaurants, search your favorite dishes, filter by dietary preferences, and compare food choices.',
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppButton(
+                          label: 'Discover Restaurants',
+                          onPressed: () => context.go(AppRoutes.discovery),
+                          icon: const Icon(Icons.explore, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+
                 // Restaurant Admin Operational Portal
                 if (user.role == UserRole.restaurantAdmin) ...[
                   AppCard(

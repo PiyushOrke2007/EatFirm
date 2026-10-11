@@ -21,4 +21,8 @@ class AppRoutes {
   static const String restaurantMenu = '/restaurant/menu';
   static const String restaurantHours = '/restaurant/hours';
   static const String adminApprovals = '/admin/approvals';
+
+  // Module 04: Customer Discovery, Search, Compare & Menu Details
+  static const String discovery = '/discovery';
+  static const String restaurantDetails = '/restaurant-details';
 }

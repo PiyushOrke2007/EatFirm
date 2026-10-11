@@ -19,6 +19,9 @@ import {
   CreateMenuItemInput,
   UpdateMenuItemInput,
   DayOfWeek,
+  BrowseRestaurantsQuery,
+  SearchSuggestion,
+  CustomerRestaurantDetails,
 } from '../models/restaurant.js';
 import { toPaise, fromPaise } from '../utils/money.js';
 
@@ -850,6 +853,294 @@ export class RestaurantService {
     return r;
   }
 
+  /**
+   * BROWSE-1 & BROWSE-2: Customer Restaurant Listing with Search, Filters, and Sorting.
+   */
+  static async browseRestaurants(filters: BrowseRestaurantsQuery): Promise<{
+    restaurants: Restaurant[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.min(50, Math.max(1, filters.limit ?? 20));
+    const offset = (page - 1) * limit;
+
+    const hasCoords =
+      filters.latitude !== undefined &&
+      filters.longitude !== undefined &&
+      !isNaN(filters.latitude) &&
+      !isNaN(filters.longitude);
+
+    let distanceExpr = 'NULL::numeric AS distance_km';
+    if (hasCoords) {
+      distanceExpr = `ROUND((
+        6371 * acos(
+          LEAST(1.0, GREATEST(-1.0,
+            cos(radians(${Number(filters.latitude)})) *
+            cos(radians(r.latitude)) *
+            cos(radians(r.longitude) - radians(${Number(filters.longitude)})) +
+            sin(radians(${Number(filters.latitude)})) *
+            sin(radians(r.latitude))
+          ))
+        )
+      )::numeric, 1) AS distance_km`;
+    }
+
+    const conditions: string[] = ["r.approval_status = 'APPROVED'"];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (filters.isOpenOnly) {
+      conditions.push('r.is_open = true');
+    }
+
+    if (filters.cuisine && filters.cuisine.trim().length > 0) {
+      conditions.push(`r.cuisine_type ILIKE $${paramIndex}`);
+      params.push(`%${filters.cuisine.trim()}%`);
+      paramIndex++;
+    }
+
+    if (filters.priceTier && filters.priceTier.trim().length > 0) {
+      conditions.push(`r.price_tier = $${paramIndex}`);
+      params.push(filters.priceTier.trim());
+      paramIndex++;
+    }
+
+    if (filters.minRating !== undefined && filters.minRating > 0) {
+      conditions.push(`r.average_rating >= $${paramIndex}`);
+      params.push(filters.minRating);
+      paramIndex++;
+    }
+
+    if (filters.vegOnly) {
+      conditions.push(`EXISTS (
+        SELECT 1 FROM menu_items mi
+        WHERE mi.restaurant_id = r.id AND mi.is_veg = true AND mi.is_available = true
+      )`);
+    }
+
+    if (filters.search && filters.search.trim().length > 0) {
+      const q = `%${filters.search.trim()}%`;
+      conditions.push(`(
+        r.name ILIKE $${paramIndex} OR
+        r.cuisine_type ILIKE $${paramIndex} OR
+        EXISTS (
+          SELECT 1 FROM menu_items mi
+          WHERE mi.restaurant_id = r.id AND mi.name ILIKE $${paramIndex}
+        )
+      )`);
+      params.push(q);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    let orderBy = 'is_open DESC, average_rating DESC NULLS LAST, created_at DESC';
+    switch (filters.sortBy) {
+      case 'rating_desc':
+        orderBy = 'average_rating DESC NULLS LAST, rating_count DESC';
+        break;
+      case 'distance_asc':
+        orderBy = hasCoords ? 'distance_km ASC NULLS LAST' : 'created_at DESC';
+        break;
+      case 'delivery_time_asc':
+        orderBy = 'estimated_delivery_mins ASC';
+        break;
+      case 'cost_low_to_high':
+        orderBy = 'price_tier ASC, name ASC';
+        break;
+      case 'cost_high_to_low':
+        orderBy = 'price_tier DESC, name ASC';
+        break;
+      case 'relevance':
+      default:
+        orderBy = hasCoords
+          ? 'is_open DESC, distance_km ASC NULLS LAST, average_rating DESC NULLS LAST'
+          : 'is_open DESC, average_rating DESC NULLS LAST, created_at DESC';
+        break;
+    }
+
+    const baseQuery = `
+      SELECT r.*, ${distanceExpr}
+      FROM restaurants r
+      WHERE ${whereClause}
+    `;
+
+    let finalQuery = `WITH scored_restaurants AS (${baseQuery}) SELECT * FROM scored_restaurants`;
+    const postConditions: string[] = [];
+
+    if (hasCoords && filters.maxDistanceKm !== undefined && filters.maxDistanceKm > 0) {
+      postConditions.push(`distance_km <= $${paramIndex}`);
+      params.push(filters.maxDistanceKm);
+      paramIndex++;
+    }
+
+    if (filters.maxDeliveryMins !== undefined && filters.maxDeliveryMins > 0) {
+      postConditions.push(`estimated_delivery_mins <= $${paramIndex}`);
+      params.push(filters.maxDeliveryMins);
+      paramIndex++;
+    }
+
+    if (postConditions.length > 0) {
+      finalQuery += ` WHERE ${postConditions.join(' AND ')}`;
+    }
+
+    // Count query
+    const countSql = `SELECT COUNT(*) AS total FROM (${finalQuery}) count_alias`;
+    const countRes = await pool.query(countSql, params);
+    const total = parseInt(countRes.rows[0].total, 10) || 0;
+
+    // Paged query
+    const pagedSql = `${finalQuery} ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    const pagedParams = [...params, limit, offset];
+    const dataRes = await pool.query(pagedSql, pagedParams);
+
+    const restaurants = dataRes.rows.map(this.mapRestaurant);
+
+    return {
+      restaurants,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Fast Search Suggestions (SRS NFR-4: < 2s).
+   */
+  static async getSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const term = `%${query.trim()}%`;
+    const suggestions: SearchSuggestion[] = [];
+
+    // 1. Restaurant names
+    const restRes = await pool.query(
+      `SELECT id, name, cuisine_type FROM restaurants
+       WHERE approval_status = 'APPROVED' AND name ILIKE $1
+       ORDER BY average_rating DESC NULLS LAST
+       LIMIT 4`,
+      [term]
+    );
+    for (const row of restRes.rows) {
+      suggestions.push({
+        type: 'restaurant',
+        text: row.name,
+        subtext: row.cuisine_type,
+        id: row.id,
+      });
+    }
+
+    // 2. Dish names
+    const itemRes = await pool.query(
+      `SELECT mi.name, mi.is_veg, r.name AS restaurant_name, r.id AS restaurant_id
+       FROM menu_items mi
+       JOIN restaurants r ON mi.restaurant_id = r.id
+       WHERE r.approval_status = 'APPROVED' AND mi.is_available = true AND mi.name ILIKE $1
+       LIMIT 4`,
+      [term]
+    );
+    for (const row of itemRes.rows) {
+      suggestions.push({
+        type: 'dish',
+        text: row.name,
+        subtext: `${row.is_veg ? 'Veg' : 'Non-Veg'} • ${row.restaurant_name}`,
+        id: row.restaurant_id,
+      });
+    }
+
+    // 3. Cuisines
+    const cuisineRes = await pool.query(
+      `SELECT DISTINCT cuisine_type FROM restaurants
+       WHERE approval_status = 'APPROVED' AND cuisine_type ILIKE $1
+       LIMIT 3`,
+      [term]
+    );
+    for (const row of cuisineRes.rows) {
+      suggestions.push({
+        type: 'cuisine',
+        text: row.cuisine_type,
+        subtext: 'Cuisine',
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Customer Restaurant Menu with Category & Veg Filter (SRS BROWSE-3, NFR-12).
+   */
+  static async getCustomerRestaurantMenu(
+    restaurantId: string,
+    filters?: { categoryId?: string; isVeg?: boolean; search?: string }
+  ): Promise<{
+    restaurant: Restaurant;
+    categories: (MenuCategory & { items: MenuItem[] })[];
+  }> {
+    const restaurant = await this.getPublicRestaurant(restaurantId);
+
+    // Fetch active categories
+    const catRes = await pool.query(
+      `SELECT * FROM menu_categories
+       WHERE restaurant_id = $1 AND is_active = true
+       ORDER BY sort_order ASC, name ASC`,
+      [restaurantId]
+    );
+
+    let itemQuery = `
+      SELECT mi.*, mc.name AS category_name
+      FROM menu_items mi
+      JOIN menu_categories mc ON mi.category_id = mc.id
+      WHERE mi.restaurant_id = $1
+    `;
+    const params: any[] = [restaurantId];
+    let pIdx = 2;
+
+    if (filters?.categoryId) {
+      itemQuery += ` AND mi.category_id = $${pIdx}`;
+      params.push(filters.categoryId);
+      pIdx++;
+    }
+
+    if (filters?.isVeg !== undefined) {
+      itemQuery += ` AND mi.is_veg = $${pIdx}`;
+      params.push(filters.isVeg);
+      pIdx++;
+    }
+
+    if (filters?.search && filters.search.trim().length > 0) {
+      itemQuery += ` AND mi.name ILIKE $${pIdx}`;
+      params.push(`%${filters.search.trim()}%`);
+      pIdx++;
+    }
+
+    itemQuery += ` ORDER BY mi.is_special_offer DESC, mi.name ASC`;
+
+    const itemRes = await pool.query(itemQuery, params);
+    const items = itemRes.rows.map(this.mapMenuItem);
+
+    // Group items under categories
+    const categoriesWithItems = catRes.rows.map((catRow) => {
+      const cat = this.mapMenuCategory(catRow);
+      const catItems = items.filter((item) => item.categoryId === cat.id);
+      return {
+        ...cat,
+        items: catItems,
+      };
+    });
+
+    return {
+      restaurant,
+      categories: categoriesWithItems,
+      menuItems: items,
+    };
+  }
+
   // --- Helper mappers ---
   private static mapRestaurant(row: any): Restaurant {
     return {
@@ -865,6 +1156,13 @@ export class RestaurantService {
       approvalStatus: row.approval_status,
       rejectionReason: row.rejection_reason,
       isOpen: row.is_open,
+      latitude: row.latitude !== null && row.latitude !== undefined ? Number(row.latitude) : undefined,
+      longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : undefined,
+      averageRating: row.average_rating !== null && row.average_rating !== undefined ? Number(row.average_rating) : null,
+      ratingCount: row.rating_count !== null && row.rating_count !== undefined ? Number(row.rating_count) : 0,
+      estimatedDeliveryMins: row.estimated_delivery_mins !== null && row.estimated_delivery_mins !== undefined ? Number(row.estimated_delivery_mins) : 30,
+      priceTier: row.price_tier ?? '₹₹',
+      distanceKm: row.distance_km !== null && row.distance_km !== undefined ? Number(Number(row.distance_km).toFixed(1)) : undefined,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
     };

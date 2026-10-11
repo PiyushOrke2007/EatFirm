@@ -20,17 +20,23 @@ class NavigationShellScreen extends StatelessWidget {
     if (location.startsWith(AppRoutes.profile) ||
         location.startsWith(AppRoutes.login) ||
         location.startsWith(AppRoutes.register)) {
+      return 2;
+    }
+    if (location.startsWith(AppRoutes.showcase)) {
       return 1;
     }
-    return 0;
+    return 0; // Explore
   }
 
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:
-        context.go(AppRoutes.showcase);
+        context.go(AppRoutes.discovery);
         break;
       case 1:
+        context.go(AppRoutes.showcase);
+        break;
+      case 2:
         context.go(AppRoutes.profile);
         break;
     }
@@ -79,6 +85,11 @@ class NavigationShellScreen extends StatelessWidget {
               ),
               destinations: const [
                 NavigationRailDestination(
+                  icon: Icon(Icons.explore_outlined),
+                  selectedIcon: Icon(Icons.explore, color: AppColors.primary),
+                  label: Text('Explore'),
+                ),
+                NavigationRailDestination(
                   icon: Icon(Icons.dashboard_outlined),
                   selectedIcon: Icon(Icons.dashboard, color: AppColors.primary),
                   label: Text('Foundations'),
@@ -104,6 +115,11 @@ class NavigationShellScreen extends StatelessWidget {
         onDestinationSelected: (idx) => _onItemTapped(idx, context),
         indicatorColor: AppColors.primaryLight,
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore, color: AppColors.primary),
+            label: 'Explore',
+          ),
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard, color: AppColors.primary),

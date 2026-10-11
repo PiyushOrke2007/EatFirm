@@ -22,6 +22,10 @@ import '../../features/restaurant/screens/operating_hours_screen.dart';
 import '../../features/restaurant/screens/restaurant_dashboard_screen.dart';
 import '../../features/restaurant/screens/restaurant_onboarding_screen.dart';
 import '../../features/restaurant/services/restaurant_api_service.dart';
+import '../../features/browse/providers/browse_provider.dart';
+import '../../features/browse/screens/customer_discovery_screen.dart';
+import '../../features/browse/screens/customer_restaurant_menu_screen.dart';
+import '../../features/browse/services/browse_api_service.dart';
 
 /// App-wide declarative router using GoRouter.
 class AppRouter {
@@ -29,13 +33,18 @@ class AppRouter {
   final AuthApiService authService;
   final SessionManager sessionManager;
   final RestaurantApiService restaurantService;
+  final BrowseApiService browseService;
+  late final BrowseProvider browseProvider;
 
   AppRouter({
     required this.apiClient,
     required this.authService,
     required this.sessionManager,
     required this.restaurantService,
-  });
+    BrowseApiService? browseService,
+  }) : browseService = browseService ?? BrowseApiService(apiClient: apiClient) {
+    browseProvider = BrowseProvider(browseService: this.browseService);
+  }
 
   late final GoRouter router = GoRouter(
     initialLocation: AppRoutes.bootstrap,
@@ -57,7 +66,7 @@ class AppRouter {
       }
 
       // Restaurant Admin routes: Require authentication & RESTAURANT_ADMIN (or SYSTEM_ADMIN)
-      if (path.startsWith('/restaurant')) {
+      if (path.startsWith('/restaurant/') && !path.startsWith(AppRoutes.restaurantDetails)) {
         if (!isAuth) return AppRoutes.login;
         if (role != UserRole.restaurantAdmin && role != UserRole.systemAdmin) {
           return AppRoutes.accessDenied;
@@ -87,6 +96,11 @@ class AppRouter {
           return NavigationShellScreen(child: child);
         },
         routes: [
+          GoRoute(
+            path: AppRoutes.discovery,
+            builder: (context, state) =>
+                CustomerDiscoveryScreen(provider: browseProvider),
+          ),
           GoRoute(
             path: AppRoutes.showcase,
             builder: (context, state) =>
@@ -173,7 +187,19 @@ class AppRouter {
             AdminApprovalScreen(restaurantService: restaurantService),
       ),
 
-      // 6. Explicit 404 Route
+      // 6. Customer Restaurant Details & Menu (Module 04, BROWSE-3)
+      GoRoute(
+        path: '${AppRoutes.restaurantDetails}/:id',
+        builder: (context, state) {
+          final restaurantId = state.pathParameters['id'] ?? '';
+          return CustomerRestaurantMenuScreen(
+            restaurantId: restaurantId,
+            browseService: browseService,
+          );
+        },
+      ),
+
+      // 7. Explicit 404 Route
       GoRoute(
         path: AppRoutes.notFound,
         builder: (context, state) => const NotFoundScreen(),

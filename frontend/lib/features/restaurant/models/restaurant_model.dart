@@ -37,6 +37,13 @@ class RestaurantModel {
   final RestaurantApprovalStatus approvalStatus;
   final String? rejectionReason;
   final bool isOpen;
+  final double? latitude;
+  final double? longitude;
+  final double? averageRating;
+  final int ratingCount;
+  final int estimatedDeliveryMins;
+  final String priceTier;
+  final double? distanceKm;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<OperatingHoursModel> operatingHours;
@@ -54,6 +61,13 @@ class RestaurantModel {
     required this.approvalStatus,
     this.rejectionReason,
     required this.isOpen,
+    this.latitude,
+    this.longitude,
+    this.averageRating,
+    this.ratingCount = 0,
+    this.estimatedDeliveryMins = 30,
+    this.priceTier = '₹₹',
+    this.distanceKm,
     required this.createdAt,
     required this.updatedAt,
     this.operatingHours = const [],
@@ -79,6 +93,35 @@ class RestaurantModel {
       rejectionReason:
           (json['rejectionReason'] ?? json['rejection_reason'])?.toString(),
       isOpen: json['isOpen'] as bool? ?? json['is_open'] as bool? ?? true,
+      latitude: json['latitude'] != null
+          ? double.tryParse(json['latitude'].toString())
+          : null,
+      longitude: json['longitude'] != null
+          ? double.tryParse(json['longitude'].toString())
+          : null,
+      averageRating: json['averageRating'] != null
+          ? double.tryParse(json['averageRating'].toString())
+          : (json['average_rating'] != null
+              ? double.tryParse(json['average_rating'].toString())
+              : null),
+      ratingCount: int.tryParse(
+            (json['ratingCount'] ?? json['rating_count'] ?? 0).toString(),
+          ) ??
+          0,
+      estimatedDeliveryMins: int.tryParse(
+            (json['estimatedDeliveryMins'] ??
+                    json['estimated_delivery_mins'] ??
+                    30)
+                .toString(),
+          ) ??
+          30,
+      priceTier:
+          (json['priceTier'] ?? json['price_tier'] ?? '₹₹').toString(),
+      distanceKm: json['distanceKm'] != null
+          ? double.tryParse(json['distanceKm'].toString())
+          : (json['distance_km'] != null
+              ? double.tryParse(json['distance_km'].toString())
+              : null),
       createdAt: DateTime.tryParse(
             json['createdAt']?.toString() ??
                 json['created_at']?.toString() ??
@@ -117,6 +160,13 @@ class RestaurantModel {
       'approvalStatus': approvalStatus.value,
       'rejectionReason': rejectionReason,
       'isOpen': isOpen,
+      'latitude': latitude,
+      'longitude': longitude,
+      'averageRating': averageRating,
+      'ratingCount': ratingCount,
+      'estimatedDeliveryMins': estimatedDeliveryMins,
+      'priceTier': priceTier,
+      'distanceKm': distanceKm,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'operatingHours': operatingHours.map((h) => h.toJson()).toList(),
@@ -136,6 +186,13 @@ class RestaurantModel {
     RestaurantApprovalStatus? approvalStatus,
     String? rejectionReason,
     bool? isOpen,
+    double? latitude,
+    double? longitude,
+    double? averageRating,
+    int? ratingCount,
+    int? estimatedDeliveryMins,
+    String? priceTier,
+    double? distanceKm,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<OperatingHoursModel>? operatingHours,
@@ -153,6 +210,14 @@ class RestaurantModel {
       approvalStatus: approvalStatus ?? this.approvalStatus,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       isOpen: isOpen ?? this.isOpen,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      averageRating: averageRating ?? this.averageRating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      estimatedDeliveryMins:
+          estimatedDeliveryMins ?? this.estimatedDeliveryMins,
+      priceTier: priceTier ?? this.priceTier,
+      distanceKm: distanceKm ?? this.distanceKm,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       operatingHours: operatingHours ?? this.operatingHours,

@@ -455,7 +455,7 @@ restaurantRouter.post(
 );
 
 restaurantRouter.get(
-  '/restaurants',
+  '/restaurants/admin',
   requireAuth,
   requireRoles('SYSTEM_ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -470,9 +470,78 @@ restaurantRouter.get(
 );
 
 /**
- * 5. PUBLIC RESTAURANT & MENU READS
+ * 5. PUBLIC CUSTOMER DISCOVERY & SEARCH (SRS BROWSE-1, BROWSE-2, BROWSE-3, NFR-4)
  */
 
+const browseQuerySchema = z.object({
+  search: z.string().max(100).optional(),
+  cuisine: z.string().max(100).optional(),
+  minRating: z.coerce.number().min(1).max(5).optional(),
+  maxDistanceKm: z.coerce.number().positive().max(100).optional(),
+  maxDeliveryMins: z.coerce.number().positive().max(240).optional(),
+  priceTier: z.string().max(10).optional(),
+  vegOnly: z
+    .enum(['true', 'false', '1', '0'])
+    .transform((v) => v === 'true' || v === '1')
+    .optional(),
+  isOpenOnly: z
+    .enum(['true', 'false', '1', '0'])
+    .transform((v) => v === 'true' || v === '1')
+    .optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  sortBy: z
+    .enum([
+      'relevance',
+      'rating_desc',
+      'distance_asc',
+      'delivery_time_asc',
+      'cost_low_to_high',
+      'cost_high_to_low',
+    ])
+    .optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(20),
+});
+
+const customerMenuQuerySchema = z.object({
+  categoryId: z.string().uuid().optional(),
+  isVeg: z
+    .enum(['true', 'false', '1', '0'])
+    .transform((v) => v === 'true' || v === '1')
+    .optional(),
+  search: z.string().max(100).optional(),
+});
+
+// BROWSE-1 & BROWSE-2: Customer discovery feed with live search & multi-attribute filters
+restaurantRouter.get(
+  '/restaurants',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const filters = browseQuerySchema.parse(req.query);
+      const result = await RestaurantService.browseRestaurants(filters);
+      sendSuccess(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// SRS NFR-4: Fast search suggestions (< 2s)
+restaurantRouter.get(
+  '/restaurants/search/suggestions',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = (req.query.q as string) || '';
+      const suggestions = await RestaurantService.getSearchSuggestions(query);
+      sendSuccess(res, { suggestions });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Public restaurant details
 restaurantRouter.get(
   '/restaurants/:id',
   async (req: Request, res: Response, next: NextFunction) => {
@@ -486,19 +555,15 @@ restaurantRouter.get(
   }
 );
 
+// BROWSE-3: Public customer menu with categories and veg/non-veg filter (NFR-12)
 restaurantRouter.get(
   '/restaurants/:id/menu',
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const restaurantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const restaurant = await RestaurantService.getPublicRestaurant(restaurantId);
-      const categories = await RestaurantService.getCategories(restaurant.id);
-      const menuItems = await RestaurantService.getMenuItems(restaurant.id, undefined, true);
-      sendSuccess(res, {
-        restaurant,
-        categories,
-        menuItems,
-      });
+      const filters = customerMenuQuerySchema.parse(req.query);
+      const result = await RestaurantService.getCustomerRestaurantMenu(restaurantId, filters);
+      sendSuccess(res, result);
     } catch (err) {
       next(err);
     }
