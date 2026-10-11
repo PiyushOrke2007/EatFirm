@@ -35,9 +35,9 @@ frontend/android/app/build
 *.swp
 *.swo
 
-#prompt
+#prompt & other files
 docs/
-
 MASTER_ANTIGRAVITY_PROMPT.md
 GLOBAL_ARCHITECTURE.md
 SRS_FDMS.pdf
+SRS_EXTRACTED_TEXT.txt

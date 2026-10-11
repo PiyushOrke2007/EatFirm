@@ -6,6 +6,7 @@ import { requestLoggerMiddleware } from './middleware/requestLogger.js';
 import { errorHandler, NotFoundError } from './middleware/errorHandler.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
+import { restaurantRouter } from './routes/restaurant.js';
 import { authenticateToken } from './middleware/authGuard.js';
 
 export function createApp(): Express {
@@ -38,6 +39,7 @@ export function createApp(): Express {
   // Versioned API Routes (/api/v1)
   app.use('/api/v1', healthRouter);
   app.use('/api/v1', authRouter);
+  app.use('/api/v1', restaurantRouter);
 
   // Fallback for undefined routes
   app.use((req: Request, _res: Response, next: NextFunction) => {

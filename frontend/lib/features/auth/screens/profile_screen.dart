@@ -388,7 +388,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.md),
+
+                // Restaurant Admin Operational Portal
+                if (user.role == UserRole.restaurantAdmin) ...[
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Restaurant Operations', style: AppTypography.title),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Manage your restaurant profile, categories, dishes, availability, and operational hours.',
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppButton(
+                          label: 'Go to Restaurant Dashboard',
+                          onPressed: () => context.go(AppRoutes.restaurantDashboard),
+                          icon: const Icon(Icons.storefront, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+
+                // System Admin Verification Portal
+                if (user.role == UserRole.systemAdmin) ...[
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Administration Portals', style: AppTypography.title),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Review and approve or reject pending restaurant registrations (SRS REST-2).',
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppButton(
+                          label: 'Review Pending Restaurants',
+                          onPressed: () => context.go(AppRoutes.adminApprovals),
+                          icon: const Icon(Icons.verified_user, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+
+                const SizedBox(height: AppSpacing.sm),
 
                 // Logout Action Button
                 AppButton(

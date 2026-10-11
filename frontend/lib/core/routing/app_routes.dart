@@ -14,4 +14,11 @@ class AppRoutes {
   static const String resetPassword = '/reset-password';
   static const String profile = '/profile';
   static const String accessDenied = '/access-denied';
+
+  // Module 03: Restaurant Management & Onboarding
+  static const String restaurantDashboard = '/restaurant/dashboard';
+  static const String restaurantOnboard = '/restaurant/onboard';
+  static const String restaurantMenu = '/restaurant/menu';
+  static const String restaurantHours = '/restaurant/hours';
+  static const String adminApprovals = '/admin/approvals';
 }
