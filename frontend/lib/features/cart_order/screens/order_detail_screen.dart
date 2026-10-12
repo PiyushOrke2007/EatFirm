@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -373,7 +375,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // 6. Cancellation Button (ORD-08, NFR-14)
+          // 6. Actions (ORD-07, ORD-08, NFR-14)
           if (order.fulfillmentStatus.isCancellable) ...[
             AppButton(
               label: 'Cancel Order',
@@ -387,6 +389,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               'Orders can be cancelled before kitchen preparation begins.',
               style: AppTypography.caption.copyWith(color: AppColors.neutral500),
               textAlign: TextAlign.center,
+            ),
+          ] else ...[
+            AppButton(
+              label: 'Order Again',
+              variant: AppButtonVariant.primary,
+              icon: const Icon(Icons.replay, size: 18),
+              onPressed: () {
+                context.push('${AppRoutes.restaurantDetails}/${order.restaurantId}');
+              },
             ),
           ],
           const SizedBox(height: AppSpacing.xl),

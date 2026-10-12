@@ -247,5 +247,21 @@ test('MODULE 04: CUSTOMER RESTAURANT DISCOVERY, SEARCH & MENU DETAILS INTEGRATIO
       assert.equal(res.status, 404);
     });
   });
+
+  // Teardown: Clean up test fixtures so dev DB remains clean
+  await t.test('Teardown: Clean up test fixtures', async () => {
+    const ids = [approvedRestaurantId, pendingRestaurantId].filter(Boolean);
+    if (ids.length > 0) {
+      await pool.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM carts WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM order_status_events WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM orders WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM menu_items WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM menu_categories WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM operating_hours WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM restaurants WHERE id = ANY($1)', [ids]);
+    }
+  });
 });
 

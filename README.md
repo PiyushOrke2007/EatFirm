@@ -282,10 +282,10 @@ EatFirm/
 EatFirm is developed in a 10-module sequence:
 
 - [x] **Module 01: Foundation, Architecture, and Design System** *(Complete)*
-- [ ] **Module 02: Registration, Login, Sessions, and Role-Based Access** *(Next)*
-- [ ] **Module 03: Restaurant Onboarding and Menu Management**
-- [ ] **Module 04: Customer Browse, Search, and Filtering**
-- [ ] **Module 05: Cart Management, Order Placement, and Scheduling**
+- [x] **Module 02: Registration, Login, Sessions, and Role-Based Access** *(Next)*
+- [x] **Module 03: Restaurant Onboarding and Menu Management**
+- [x] **Module 04: Customer Browse, Search, and Filtering**
+- [x] **Module 05: Cart Management, Order Placement, and Scheduling**
 - [ ] **Module 06: Cash on Delivery (COD) Payment and Invoices**
 - [ ] **Module 07: Real-Time Order and Delivery Tracking**
 - [ ] **Module 08: Delivery Partner Assignment and Handover**

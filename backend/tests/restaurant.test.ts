@@ -428,5 +428,20 @@ test('MODULE 03: RESTAURANT & MENU MANAGEMENT INTEGRATION TESTS', async (t) => {
     assert.ok(menuRes.body.data.categories);
     assert.ok(menuRes.body.data.menuItems);
   });
+
+  // Teardown: Clean up test restaurant so dev database remains clean
+  await t.test('Teardown: Clean up test fixtures', async () => {
+    if (restaurantId) {
+      await pool.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE restaurant_id = $1)', [restaurantId]);
+      await pool.query('DELETE FROM carts WHERE restaurant_id = $1', [restaurantId]);
+      await pool.query('DELETE FROM order_status_events WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = $1)', [restaurantId]);
+      await pool.query('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = $1)', [restaurantId]);
+      await pool.query('DELETE FROM orders WHERE restaurant_id = $1', [restaurantId]);
+      await pool.query('DELETE FROM menu_items WHERE restaurant_id = $1', [restaurantId]);
+      await pool.query('DELETE FROM menu_categories WHERE restaurant_id = $1', [restaurantId]);
+      await pool.query('DELETE FROM operating_hours WHERE restaurant_id = $1', [restaurantId]);
+      await pool.query('DELETE FROM restaurants WHERE id = $1', [restaurantId]);
+    }
+  });
 });
 

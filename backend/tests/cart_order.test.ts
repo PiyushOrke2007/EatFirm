@@ -397,4 +397,20 @@ test('MODULE 05: CART, CHECKOUT, ORDER PLACEMENT, HISTORY & CANCELLATION INTEGRA
     assert.equal(dbOrder.rows.length, 1);
     assert.equal(dbOrder.rows[0].fulfillment_status, 'CANCELLED');
   });
+
+  // Teardown: Clean up test fixtures so dev DB remains pristine
+  await t.test('Teardown: Clean up test fixtures', async () => {
+    const ids = [restaurant1Id, restaurant2Id].filter(Boolean);
+    if (ids.length > 0) {
+      await pool.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM carts WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM order_status_events WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM orders WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM menu_items WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM menu_categories WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM operating_hours WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM restaurants WHERE id = ANY($1)', [ids]);
+    }
+  });
 });
