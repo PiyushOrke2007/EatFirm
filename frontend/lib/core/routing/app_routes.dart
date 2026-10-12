@@ -25,4 +25,11 @@ class AppRoutes {
   // Module 04: Customer Discovery, Search, Compare & Menu Details
   static const String discovery = '/discovery';
   static const String restaurantDetails = '/restaurant-details';
+
+  // Module 05: Cart, Checkout, Order Placement, History & Cancellation
+  static const String cart = '/cart';
+  static const String checkout = '/checkout';
+  static const String orders = '/orders';
+  static const String orderDetail = '/orders/:id';
+  static const String orderConfirmation = '/orders/confirmation/:id';
 }

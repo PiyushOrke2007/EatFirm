@@ -20,9 +20,12 @@ class NavigationShellScreen extends StatelessWidget {
     if (location.startsWith(AppRoutes.profile) ||
         location.startsWith(AppRoutes.login) ||
         location.startsWith(AppRoutes.register)) {
-      return 2;
+      return 3;
     }
     if (location.startsWith(AppRoutes.showcase)) {
+      return 2;
+    }
+    if (location.startsWith(AppRoutes.orders)) {
       return 1;
     }
     return 0; // Explore
@@ -34,9 +37,12 @@ class NavigationShellScreen extends StatelessWidget {
         context.go(AppRoutes.discovery);
         break;
       case 1:
-        context.go(AppRoutes.showcase);
+        context.go(AppRoutes.orders);
         break;
       case 2:
+        context.go(AppRoutes.showcase);
+        break;
+      case 3:
         context.go(AppRoutes.profile);
         break;
     }
@@ -90,6 +96,11 @@ class NavigationShellScreen extends StatelessWidget {
                   label: Text('Explore'),
                 ),
                 NavigationRailDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long, color: AppColors.primary),
+                  label: Text('Orders'),
+                ),
+                NavigationRailDestination(
                   icon: Icon(Icons.dashboard_outlined),
                   selectedIcon: Icon(Icons.dashboard, color: AppColors.primary),
                   label: Text('Foundations'),
@@ -119,6 +130,11 @@ class NavigationShellScreen extends StatelessWidget {
             icon: Icon(Icons.explore_outlined),
             selectedIcon: Icon(Icons.explore, color: AppColors.primary),
             label: 'Explore',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long, color: AppColors.primary),
+            label: 'Orders',
           ),
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),

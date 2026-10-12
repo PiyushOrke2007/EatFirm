@@ -30,6 +30,11 @@ class AppTypography {
     color: AppColors.textPrimary,
   );
 
+  // Semantic heading aliases
+  static const TextStyle h1 = display;
+  static const TextStyle h2 = headline;
+  static const TextStyle h3 = title;
+
   static const TextStyle bodyLarge = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w400,

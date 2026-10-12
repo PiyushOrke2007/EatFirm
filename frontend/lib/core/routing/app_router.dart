@@ -26,6 +26,13 @@ import '../../features/browse/providers/browse_provider.dart';
 import '../../features/browse/screens/customer_discovery_screen.dart';
 import '../../features/browse/screens/customer_restaurant_menu_screen.dart';
 import '../../features/browse/services/browse_api_service.dart';
+import '../../features/cart_order/providers/cart_order_provider.dart';
+import '../../features/cart_order/screens/cart_screen.dart';
+import '../../features/cart_order/screens/checkout_screen.dart';
+import '../../features/cart_order/screens/order_confirmation_screen.dart';
+import '../../features/cart_order/screens/order_detail_screen.dart';
+import '../../features/cart_order/screens/order_history_screen.dart';
+import '../../features/cart_order/services/cart_order_api_service.dart';
 
 /// App-wide declarative router using GoRouter.
 class AppRouter {
@@ -35,6 +42,8 @@ class AppRouter {
   final RestaurantApiService restaurantService;
   final BrowseApiService browseService;
   late final BrowseProvider browseProvider;
+  final CartOrderApiService cartOrderService;
+  late final CartOrderProvider cartOrderProvider;
 
   AppRouter({
     required this.apiClient,
@@ -42,8 +51,12 @@ class AppRouter {
     required this.sessionManager,
     required this.restaurantService,
     BrowseApiService? browseService,
-  }) : browseService = browseService ?? BrowseApiService(apiClient: apiClient) {
+    CartOrderApiService? cartOrderService,
+  })  : browseService = browseService ?? BrowseApiService(apiClient: apiClient),
+        cartOrderService =
+            cartOrderService ?? CartOrderApiService(apiClient: apiClient) {
     browseProvider = BrowseProvider(browseService: this.browseService);
+    cartOrderProvider = CartOrderProvider(apiService: this.cartOrderService);
   }
 
   late final GoRouter router = GoRouter(
@@ -55,8 +68,12 @@ class AppRouter {
       final role = sessionManager.role;
       final path = state.uri.path;
 
-      // Protected route: Redirect unauthenticated user to login
-      if (path == AppRoutes.profile && !isAuth) {
+      // Protected routes: Redirect unauthenticated user to login
+      if ((path == AppRoutes.profile ||
+              path == AppRoutes.cart ||
+              path == AppRoutes.checkout ||
+              path.startsWith('/orders')) &&
+          !isAuth) {
         return AppRoutes.login;
       }
 
@@ -195,11 +212,50 @@ class AppRouter {
           return CustomerRestaurantMenuScreen(
             restaurantId: restaurantId,
             browseService: browseService,
+            cartProvider: cartOrderProvider,
           );
         },
       ),
 
-      // 7. Explicit 404 Route
+      // 7. Cart, Checkout & Orders Routes (Module 05)
+      GoRoute(
+        path: AppRoutes.cart,
+        builder: (context, state) => CartScreen(provider: cartOrderProvider),
+      ),
+      GoRoute(
+        path: AppRoutes.checkout,
+        builder: (context, state) => CheckoutScreen(
+          provider: cartOrderProvider,
+          sessionManager: sessionManager,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.orders,
+        builder: (context, state) =>
+            OrderHistoryScreen(provider: cartOrderProvider),
+      ),
+      GoRoute(
+        path: AppRoutes.orderDetail,
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'] ?? '';
+          return OrderDetailScreen(
+            orderId: orderId,
+            provider: cartOrderProvider,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.orderConfirmation,
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'] ?? '';
+          return OrderConfirmationScreen(
+            orderId: orderId,
+            provider: cartOrderProvider,
+          );
+        },
+      ),
+
+      // 8. Explicit 404 Route
       GoRoute(
         path: AppRoutes.notFound,
         builder: (context, state) => const NotFoundScreen(),

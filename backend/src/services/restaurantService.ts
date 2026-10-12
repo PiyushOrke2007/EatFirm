@@ -1081,6 +1081,7 @@ export class RestaurantService {
   ): Promise<{
     restaurant: Restaurant;
     categories: (MenuCategory & { items: MenuItem[] })[];
+    menuItems?: MenuItem[];
   }> {
     const restaurant = await this.getPublicRestaurant(restaurantId);
 

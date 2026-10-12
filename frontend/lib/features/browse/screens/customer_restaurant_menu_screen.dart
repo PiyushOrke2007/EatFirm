@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,6 +10,8 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_loading.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../cart_order/models/cart_model.dart';
+import '../../cart_order/providers/cart_order_provider.dart';
 import '../../restaurant/models/menu_item_model.dart';
 import '../../restaurant/models/restaurant_model.dart';
 import '../models/customer_menu_model.dart';
@@ -17,11 +21,13 @@ import '../services/browse_api_service.dart';
 class CustomerRestaurantMenuScreen extends StatefulWidget {
   final String restaurantId;
   final BrowseApiService browseService;
+  final CartOrderProvider? cartProvider;
 
   const CustomerRestaurantMenuScreen({
     super.key,
     required this.restaurantId,
     required this.browseService,
+    this.cartProvider,
   });
 
   @override
@@ -46,6 +52,12 @@ class _CustomerRestaurantMenuScreenState
   @override
   void initState() {
     super.initState();
+    final providerCart = widget.cartProvider?.cart;
+    if (providerCart != null && providerCart.restaurantId == widget.restaurantId) {
+      for (final item in providerCart.items) {
+        _cart[item.menuItemId] = item.quantity;
+      }
+    }
     _loadMenu();
   }
 
@@ -101,21 +113,97 @@ class _CustomerRestaurantMenuScreenState
     _loadMenu();
   }
 
-  void _addToCart(MenuItemModel item) {
+  Future<void> _addToCart(MenuItemModel item) async {
     setState(() {
       _cart[item.id] = (_cart[item.id] ?? 0) + 1;
     });
+
+    if (widget.cartProvider != null) {
+      try {
+        await widget.cartProvider!.addToCart(
+          restaurantId: widget.restaurantId,
+          menuItemId: item.id,
+          quantity: 1,
+        );
+      } on DifferentRestaurantConflictException catch (conflict) {
+        if (!mounted) return;
+        final shouldReplace = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Replace Cart Items?'),
+            content: Text(
+              'Your cart contains dishes from ${conflict.existingRestaurantName}. Do you want to discard your previous selection and add items from ${_menuData?.restaurant.name ?? 'this restaurant'}?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Keep Existing'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Replace Cart'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldReplace == true) {
+          _cart.clear();
+          setState(() {
+            _cart[item.id] = 1;
+          });
+          await widget.cartProvider!.addToCart(
+            restaurantId: widget.restaurantId,
+            menuItemId: item.id,
+            quantity: 1,
+            replaceCart: true,
+          );
+        } else {
+          setState(() {
+            _cart.remove(item.id);
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          AppSnackbar.showError(context, e.toString());
+        }
+      }
+    }
   }
 
-  void _removeFromCart(MenuItemModel item) {
+  Future<void> _removeFromCart(MenuItemModel item) async {
+    final current = _cart[item.id] ?? 0;
     setState(() {
-      final current = _cart[item.id] ?? 0;
       if (current <= 1) {
         _cart.remove(item.id);
       } else {
         _cart[item.id] = current - 1;
       }
     });
+
+    if (widget.cartProvider != null) {
+      final cartItem = widget.cartProvider!.cart?.items.firstWhere(
+        (i) => i.menuItemId == item.id,
+        orElse: () => const CartItemModel(
+          id: '',
+          cartId: '',
+          menuItemId: '',
+          quantity: 0,
+          name: '',
+          price: '0',
+          effectivePrice: '0',
+          isVeg: true,
+          isAvailable: true,
+          lineTotal: '0',
+        ),
+      );
+      if (cartItem != null && cartItem.id.isNotEmpty) {
+        try {
+          await widget.cartProvider!.updateItemQuantity(cartItem.id, current - 1);
+        } catch (_) {}
+      }
+    }
   }
 
   int get _totalCartItems => _cart.values.fold(0, (sum, count) => sum + count);
@@ -763,16 +851,15 @@ class _CustomerRestaurantMenuScreenState
             ),
             ElevatedButton.icon(
               onPressed: () {
-                AppSnackbar.showInfo(
-                  context,
-                  'Cart handoff: $_totalCartItems items ready for Module 05 Checkout',
-                );
+                context.push(AppRoutes.cart);
               },
               icon: const Icon(Icons.shopping_bag_outlined, size: 18),
               label: const Text('View Cart'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: AppColors.primary,
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),

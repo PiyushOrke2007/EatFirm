@@ -2,8 +2,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { z } from 'zod';
 
-// Load .env file
+// Load .env file (supports running from repository root or backend directory)
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
 
 const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
@@ -11,7 +12,7 @@ const configSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
 
   DB_HOST: z.string().min(1).default('127.0.0.1'),
-  DB_PORT: z.coerce.number().int().positive().default(5433),
+  DB_PORT: z.coerce.number().int().positive().default(5432),
   DB_NAME: z.string().min(1).default('eatfirm_dev'),
   DB_USER: z.string().min(1).default('eatfirm'),
   DB_PASSWORD: z.string().default(''),

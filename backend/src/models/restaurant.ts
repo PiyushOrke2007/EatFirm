@@ -86,6 +86,7 @@ export interface SearchSuggestion {
 export interface CustomerRestaurantDetails extends Restaurant {
   categories: (MenuCategory & { items: MenuItem[] })[];
   featuredItems?: MenuItem[];
+  menuItems?: MenuItem[];
 }
 
 export interface MenuCategory {
