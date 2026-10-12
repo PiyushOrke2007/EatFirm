@@ -238,7 +238,32 @@ export class OrderService {
         ]
       );
 
-      // 8. Clear the active cart
+      // 8. Insert Payment Record (PAY-01, PAY-02)
+      const paymentInsertRes = await client.query(
+        `INSERT INTO payments (
+          order_id, payment_method, payment_status, amount, currency
+        ) VALUES ($1, $2, 'PENDING', $3, 'INR')
+        RETURNING id`,
+        [orderId, paymentMethod, totalAmountStr]
+      );
+      const paymentId = paymentInsertRes.rows[0].id;
+
+      // 9. Insert Initial Payment Event
+      await client.query(
+        `INSERT INTO payment_events (
+          payment_id, from_status, to_status, actor_user_id, actor_role, note
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          paymentId,
+          null,
+          'PENDING',
+          userId,
+          'CUSTOMER',
+          'Cash On Delivery payment pending collection upon delivery',
+        ]
+      );
+
+      // 10. Clear the active cart
       await client.query(`DELETE FROM carts WHERE id = $1`, [cartRow.id]);
 
       await client.query('COMMIT');
@@ -291,6 +316,7 @@ export class OrderService {
     if (userRole === 'RESTAURANT_ADMIN' && orderRow.restaurant_owner_id !== userId) {
       throw new ForbiddenError('You do not own the restaurant for this order');
     }
+    // DELIVERY_PARTNER and SYSTEM_ADMIN are permitted to view active/dispatched orders
 
     // Line items
     const itemsRes = await pool.query(
@@ -380,7 +406,7 @@ export class OrderService {
     } else if (userRole === 'RESTAURANT_ADMIN') {
       params.push(userId);
       whereClause = `WHERE r.owner_id = $${params.length}`;
-    } else if (userRole === 'SYSTEM_ADMIN') {
+    } else if (userRole === 'DELIVERY_PARTNER' || userRole === 'SYSTEM_ADMIN') {
       whereClause = `WHERE 1=1`;
     } else {
       throw new ForbiddenError('Unauthorized role for listing orders');
@@ -547,6 +573,44 @@ export class OrderService {
           `Cancelled: ${reason.trim()}`,
         ]
       );
+
+      // Update payment record if pending (SRS PAY-02: payment voided due to cancellation)
+      const paymentRes = await client.query(
+        `SELECT id, payment_status FROM payments WHERE order_id = $1 FOR UPDATE`,
+        [orderId]
+      );
+      if (paymentRes.rows.length > 0) {
+        const p = paymentRes.rows[0];
+        if (p.payment_status === 'PENDING') {
+          await client.query(
+            `UPDATE payments
+             SET payment_status = 'FAILED',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [p.id]
+          );
+          await client.query(
+            `UPDATE orders
+             SET payment_status = 'FAILED',
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [orderId]
+          );
+          await client.query(
+            `INSERT INTO payment_events (
+              payment_id, from_status, to_status, actor_user_id, actor_role, note
+            ) VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              p.id,
+              'PENDING',
+              'FAILED',
+              userId,
+              userRole,
+              `Payment voided due to order cancellation: ${reason.trim()}`,
+            ]
+          );
+        }
+      }
 
       await client.query('COMMIT');
     } catch (err) {

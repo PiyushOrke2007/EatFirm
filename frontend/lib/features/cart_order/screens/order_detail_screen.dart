@@ -9,6 +9,9 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../auth/models/user_model.dart';
+import '../../auth/services/session_manager.dart';
+import '../../payment_invoice/providers/payment_invoice_provider.dart';
 import '../models/order_model.dart';
 import '../providers/cart_order_provider.dart';
 
@@ -17,11 +20,15 @@ import '../providers/cart_order_provider.dart';
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
   final CartOrderProvider provider;
+  final PaymentInvoiceProvider? paymentProvider;
+  final SessionManager? sessionManager;
 
   const OrderDetailScreen({
     super.key,
     required this.orderId,
     required this.provider,
+    this.paymentProvider,
+    this.sessionManager,
   });
 
   @override
@@ -35,14 +42,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   void initState() {
     super.initState();
     widget.provider.addListener(_onProviderUpdate);
+    widget.paymentProvider?.addListener(_onProviderUpdate);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.provider.loadOrderDetail(widget.orderId);
+      widget.paymentProvider?.fetchPayment(widget.orderId);
     });
   }
 
   @override
   void dispose() {
     widget.provider.removeListener(_onProviderUpdate);
+    widget.paymentProvider?.removeListener(_onProviderUpdate);
     _cancelReasonController.dispose();
     super.dispose();
   }
@@ -131,6 +141,47 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _handleRecordCashCollection() async {
+    final payProvider = widget.paymentProvider;
+    if (payProvider == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Record Cash Collection'),
+        content: const Text(
+          'Confirm that you have collected the cash from the customer for this order.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.veg),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm Cash Received'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final success = await payProvider.recordCollection(widget.orderId);
+      if (mounted) {
+        if (success) {
+          AppSnackbar.showSuccess(context, 'Cash collection recorded successfully');
+          widget.provider.loadOrderDetail(widget.orderId);
+        } else {
+          AppSnackbar.showError(
+            context,
+            payProvider.collectionError ?? 'Failed to record cash collection',
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = widget.provider;
@@ -138,6 +189,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.discovery);
+            }
+          },
+        ),
         title: Text(order != null ? '#${order.publicOrderNumber}' : 'Order Details'),
       ),
       body: provider.isLoadingOrderDetail
@@ -370,6 +432,85 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   'Payment: ${order.paymentMethod} (${order.paymentStatus.name.toUpperCase()})',
                   style: AppTypography.caption.copyWith(color: AppColors.neutral500),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // 6. Payment & Tax Invoicing Card (SRS PAY-01..05)
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Payment & Invoicing',
+                      style: AppTypography.title.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: order.paymentStatus == OrderPaymentStatus.paid
+                            ? AppColors.veg.withAlpha(40)
+                            : order.paymentStatus == OrderPaymentStatus.failed
+                                ? AppColors.nonVeg.withAlpha(40)
+                                : AppColors.warning.withAlpha(40),
+                        borderRadius: AppRadius.brSm,
+                      ),
+                      child: Text(
+                        order.paymentStatus == OrderPaymentStatus.paid
+                            ? 'PAID'
+                            : order.paymentStatus == OrderPaymentStatus.failed
+                                ? 'FAILED'
+                                : 'DUE (COD)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: order.paymentStatus == OrderPaymentStatus.paid
+                              ? AppColors.veg
+                              : order.paymentStatus == OrderPaymentStatus.failed
+                                  ? AppColors.nonVeg
+                                  : AppColors.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  order.paymentStatus == OrderPaymentStatus.paid
+                      ? 'Payment collected in full via Cash on Delivery.'
+                      : order.paymentStatus == OrderPaymentStatus.failed
+                          ? 'Order was cancelled; payment marked void.'
+                          : 'Cash to be collected upon order delivery at doorstep.',
+                  style: AppTypography.caption.copyWith(color: AppColors.neutral700),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: 'View Tax Invoice',
+                  variant: AppButtonVariant.outline,
+                  icon: const Icon(Icons.receipt_long, size: 18),
+                  onPressed: () {
+                    context.push(AppRoutes.orderInvoicePath(order.id));
+                  },
+                ),
+                if ((widget.sessionManager?.role == UserRole.deliveryPartner ||
+                        widget.sessionManager?.role == UserRole.systemAdmin) &&
+                    order.paymentStatus != OrderPaymentStatus.paid &&
+                    order.paymentStatus != OrderPaymentStatus.failed) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  AppButton(
+                    label: 'Record Cash Collection',
+                    variant: AppButtonVariant.primary,
+                    icon: const Icon(Icons.payments_outlined, size: 18),
+                    isLoading: widget.paymentProvider?.isCollecting ?? false,
+                    onPressed: (widget.paymentProvider?.isCollecting ?? false)
+                        ? null
+                        : _handleRecordCashCollection,
+                  ),
+                ],
               ],
             ),
           ),

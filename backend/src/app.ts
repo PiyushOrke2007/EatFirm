@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js';
 import { restaurantRouter } from './routes/restaurant.js';
 import { cartRouter } from './routes/cart.js';
 import { orderRouter } from './routes/order.js';
+import { paymentRouter } from './routes/payment.js';
 import { authenticateToken } from './middleware/authGuard.js';
 
 export function createApp(): Express {
@@ -44,6 +45,7 @@ export function createApp(): Express {
   app.use('/api/v1', restaurantRouter);
   app.use('/api/v1', cartRouter);
   app.use('/api/v1', orderRouter);
+  app.use('/api/v1', paymentRouter);
 
   // Fallback for undefined routes
   app.use((req: Request, _res: Response, next: NextFunction) => {

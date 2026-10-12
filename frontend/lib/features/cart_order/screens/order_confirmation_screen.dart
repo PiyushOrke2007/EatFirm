@@ -198,7 +198,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   child: AppButton(
                     label: 'View Order Details & Status',
                     icon: const Icon(Icons.receipt_long, size: 20),
-                    onPressed: () => context.go('/orders/${widget.orderId}'),
+                    onPressed: () => context.push('/orders/${widget.orderId}'),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),

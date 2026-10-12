@@ -33,6 +33,9 @@ import '../../features/cart_order/screens/order_confirmation_screen.dart';
 import '../../features/cart_order/screens/order_detail_screen.dart';
 import '../../features/cart_order/screens/order_history_screen.dart';
 import '../../features/cart_order/services/cart_order_api_service.dart';
+import '../../features/payment_invoice/services/payment_invoice_api_service.dart';
+import '../../features/payment_invoice/providers/payment_invoice_provider.dart';
+import '../../features/payment_invoice/screens/invoice_detail_screen.dart';
 
 /// App-wide declarative router using GoRouter.
 class AppRouter {
@@ -44,6 +47,8 @@ class AppRouter {
   late final BrowseProvider browseProvider;
   final CartOrderApiService cartOrderService;
   late final CartOrderProvider cartOrderProvider;
+  final PaymentInvoiceApiService paymentInvoiceService;
+  late final PaymentInvoiceProvider paymentInvoiceProvider;
 
   AppRouter({
     required this.apiClient,
@@ -52,11 +57,16 @@ class AppRouter {
     required this.restaurantService,
     BrowseApiService? browseService,
     CartOrderApiService? cartOrderService,
+    PaymentInvoiceApiService? paymentInvoiceService,
   })  : browseService = browseService ?? BrowseApiService(apiClient: apiClient),
         cartOrderService =
-            cartOrderService ?? CartOrderApiService(apiClient: apiClient) {
+            cartOrderService ?? CartOrderApiService(apiClient: apiClient),
+        paymentInvoiceService =
+            paymentInvoiceService ?? PaymentInvoiceApiService(apiClient: apiClient) {
     browseProvider = BrowseProvider(browseService: this.browseService);
     cartOrderProvider = CartOrderProvider(apiService: this.cartOrderService);
+    paymentInvoiceProvider =
+        PaymentInvoiceProvider(apiService: this.paymentInvoiceService);
   }
 
   late final GoRouter router = GoRouter(
@@ -241,6 +251,8 @@ class AppRouter {
           return OrderDetailScreen(
             orderId: orderId,
             provider: cartOrderProvider,
+            paymentProvider: paymentInvoiceProvider,
+            sessionManager: sessionManager,
           );
         },
       ),
@@ -255,7 +267,19 @@ class AppRouter {
         },
       ),
 
-      // 8. Explicit 404 Route
+      // 8. Module 06: Official Tax Invoice
+      GoRoute(
+        path: AppRoutes.orderInvoice,
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'] ?? '';
+          return InvoiceDetailScreen(
+            orderId: orderId,
+            provider: paymentInvoiceProvider,
+          );
+        },
+      ),
+
+      // 9. Explicit 404 Route
       GoRoute(
         path: AppRoutes.notFound,
         builder: (context, state) => const NotFoundScreen(),

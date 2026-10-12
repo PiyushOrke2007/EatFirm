@@ -32,4 +32,8 @@ class AppRoutes {
   static const String orders = '/orders';
   static const String orderDetail = '/orders/:id';
   static const String orderConfirmation = '/orders/confirmation/:id';
+
+  // Module 06: COD Payments, Collection & Tax Invoicing
+  static const String orderInvoice = '/orders/:id/invoice';
+  static String orderInvoicePath(String orderId) => '/orders/$orderId/invoice';
 }

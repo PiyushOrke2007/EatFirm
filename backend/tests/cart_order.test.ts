@@ -404,6 +404,9 @@ test('MODULE 05: CART, CHECKOUT, ORDER PLACEMENT, HISTORY & CANCELLATION INTEGRA
     if (ids.length > 0) {
       await pool.query('DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE restaurant_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM carts WHERE restaurant_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM invoices WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
+      await pool.query('DELETE FROM payment_events WHERE payment_id IN (SELECT id FROM payments WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1)))', [ids]);
+      await pool.query('DELETE FROM payments WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM order_status_events WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE restaurant_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM orders WHERE restaurant_id = ANY($1)', [ids]);
