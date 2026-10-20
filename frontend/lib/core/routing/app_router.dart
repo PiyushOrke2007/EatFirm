@@ -36,6 +36,9 @@ import '../../features/cart_order/services/cart_order_api_service.dart';
 import '../../features/payment_invoice/services/payment_invoice_api_service.dart';
 import '../../features/payment_invoice/providers/payment_invoice_provider.dart';
 import '../../features/payment_invoice/screens/invoice_detail_screen.dart';
+import '../../features/tracking/services/tracking_api_service.dart';
+import '../../features/tracking/providers/tracking_provider.dart';
+import '../../features/tracking/screens/order_tracking_screen.dart';
 
 /// App-wide declarative router using GoRouter.
 class AppRouter {
@@ -49,6 +52,8 @@ class AppRouter {
   late final CartOrderProvider cartOrderProvider;
   final PaymentInvoiceApiService paymentInvoiceService;
   late final PaymentInvoiceProvider paymentInvoiceProvider;
+  final TrackingApiService trackingService;
+  late final TrackingProvider trackingProvider;
 
   AppRouter({
     required this.apiClient,
@@ -58,15 +63,19 @@ class AppRouter {
     BrowseApiService? browseService,
     CartOrderApiService? cartOrderService,
     PaymentInvoiceApiService? paymentInvoiceService,
+    TrackingApiService? trackingService,
   })  : browseService = browseService ?? BrowseApiService(apiClient: apiClient),
         cartOrderService =
             cartOrderService ?? CartOrderApiService(apiClient: apiClient),
         paymentInvoiceService =
-            paymentInvoiceService ?? PaymentInvoiceApiService(apiClient: apiClient) {
+            paymentInvoiceService ?? PaymentInvoiceApiService(apiClient: apiClient),
+        trackingService =
+            trackingService ?? TrackingApiService(apiClient: apiClient) {
     browseProvider = BrowseProvider(browseService: this.browseService);
     cartOrderProvider = CartOrderProvider(apiService: this.cartOrderService);
     paymentInvoiceProvider =
         PaymentInvoiceProvider(apiService: this.paymentInvoiceService);
+    trackingProvider = TrackingProvider(apiService: this.trackingService);
   }
 
   late final GoRouter router = GoRouter(
@@ -279,7 +288,20 @@ class AppRouter {
         },
       ),
 
-      // 9. Explicit 404 Route
+      // 9. Module 07: Real-Time Order Tracking & Timeline
+      GoRoute(
+        path: AppRoutes.orderTracking,
+        builder: (context, state) {
+          final orderId = state.pathParameters['id'] ?? '';
+          return OrderTrackingScreen(
+            orderId: orderId,
+            provider: trackingProvider,
+            sessionManager: sessionManager,
+          );
+        },
+      ),
+
+      // 10. Explicit 404 Route
       GoRoute(
         path: AppRoutes.notFound,
         builder: (context, state) => const NotFoundScreen(),

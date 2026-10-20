@@ -36,4 +36,8 @@ class AppRoutes {
   // Module 06: COD Payments, Collection & Tax Invoicing
   static const String orderInvoice = '/orders/:id/invoice';
   static String orderInvoicePath(String orderId) => '/orders/$orderId/invoice';
+
+  // Module 07: Order Progress, Status Timeline, and Tracking Updates
+  static const String orderTracking = '/orders/:id/tracking';
+  static String orderTrackingPath(String orderId) => '/orders/$orderId/tracking';
 }

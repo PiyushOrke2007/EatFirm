@@ -12,16 +12,20 @@ class AppConstants {
   static const String _envApiUrl = String.fromEnvironment('API_URL');
 
   // Network Defaults:
-  // - On Web: uses http://localhost:5000/api/v1
-  // - On Physical Mobile (Wi-Fi): uses laptop's local IP http://192.168.1.36:5000/api/v1
+  // - On Web: uses current host or http://localhost:5000/api/v1
+  // - On Physical Mobile / Any device on Wi-Fi: http://10.10.188.181:5000/api/v1
   static String get defaultApiBaseUrl {
     if (_envApiUrl.isNotEmpty) {
       return _envApiUrl;
     }
     if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
+        return 'http://$host:5000/api/v1';
+      }
       return 'http://localhost:5000/api/v1';
     }
-    return 'http://192.168.1.36:5000/api/v1';
+    return 'http://10.10.188.181:5000/api/v1';
   }
 
   static const Duration defaultTimeout = Duration(seconds: 15);

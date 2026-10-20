@@ -286,6 +286,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ],
                   ),
                 ),
+                if (order.fulfillmentStatus != OrderFulfillmentStatus.cancelled) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: statusColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                    ),
+                    icon: const Icon(Icons.location_on, size: 16),
+                    label: const Text('Track', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () => context.push(AppRoutes.orderTrackingPath(order.id)),
+                  ),
+                ],
               ],
             ),
           ),

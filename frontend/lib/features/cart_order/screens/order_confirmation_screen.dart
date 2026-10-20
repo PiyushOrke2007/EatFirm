@@ -81,7 +81,11 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back to Restaurants',
+            onPressed: () => context.go(AppRoutes.discovery),
+          ),
           title: const Text('Order Placed'),
         ),
         body: Center(
@@ -196,7 +200,17 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: AppButton(
-                    label: 'View Order Details & Status',
+                    label: 'Track Order Live',
+                    icon: const Icon(Icons.location_on, size: 20),
+                    onPressed: () => context.push(AppRoutes.orderTrackingPath(widget.orderId)),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: AppButton(
+                    label: 'View Order Details',
+                    variant: AppButtonVariant.outline,
                     icon: const Icon(Icons.receipt_long, size: 20),
                     onPressed: () => context.push('/orders/${widget.orderId}'),
                   ),
@@ -206,7 +220,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   width: double.infinity,
                   child: AppButton(
                     label: 'Back to Restaurants',
-                    variant: AppButtonVariant.outline,
+                    variant: AppButtonVariant.text,
                     onPressed: () => context.go(AppRoutes.discovery),
                   ),
                 ),
