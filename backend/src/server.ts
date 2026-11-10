@@ -3,6 +3,7 @@ import { app } from './app.js';
 import { config, getSanitizedConfig } from './config/index.js';
 import { logger } from './logger/index.js';
 import { checkDatabaseConnection, closeDatabasePool } from './database/db.js';
+import { startLanDiscovery } from './discovery/lanDiscovery.js';
 
 async function bootstrap() {
   logger.info('Starting EatFirm Backend Server...', {
@@ -24,10 +25,12 @@ async function bootstrap() {
   server.listen(config.PORT, config.HOST, () => {
     logger.info(`EatFirm REST API listening on http://${config.HOST}:${config.PORT}/api/v1`);
   });
+  const discovery = startLanDiscovery(config.DISCOVERY_PORT, config.PORT);
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}. Shutting down gracefully...`);
+    discovery.close();
     server.close(async () => {
       logger.info('HTTP server closed.');
       try {
@@ -58,4 +61,3 @@ bootstrap().catch((error) => {
   });
   process.exit(1);
 });
-

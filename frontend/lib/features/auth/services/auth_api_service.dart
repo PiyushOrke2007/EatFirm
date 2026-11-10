@@ -9,6 +9,7 @@ class AuthApiService {
   AuthApiService({required this.apiClient, required this.sessionManager}) {
     // Hook session token into ApiClient Bearer authorization header
     apiClient.setAuthTokenProvider(() => sessionManager.token);
+    apiClient.setUnauthorizedHandler(sessionManager.clearSession);
   }
 
   /// AUTH-01: Register user with role, credentials, and terms acceptance

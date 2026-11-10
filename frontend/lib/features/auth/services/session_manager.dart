@@ -31,6 +31,16 @@ class SessionManager extends ChangeNotifier {
     _token = sharedPrefs.getString(_keyToken);
     final userJsonStr = sharedPrefs.getString(_keyUser);
 
+    if (_token != null && _isTokenExpired(_token!)) {
+      await sharedPrefs.remove(_keyToken);
+      await sharedPrefs.remove(_keyUser);
+      _token = null;
+      _currentUser = null;
+      _isInitialized = true;
+      notifyListeners();
+      return;
+    }
+
     if (userJsonStr != null && userJsonStr.isNotEmpty) {
       try {
         final decoded = jsonDecode(userJsonStr) as Map<String, dynamic>;
@@ -46,6 +56,27 @@ class SessionManager extends ChangeNotifier {
 
     _isInitialized = true;
     notifyListeners();
+  }
+
+  bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      if (payload is! Map<String, dynamic> || payload['exp'] is! num) {
+        return false;
+      }
+
+      final expiry = DateTime.fromMillisecondsSinceEpoch(
+        (payload['exp'] as num).toInt() * 1000,
+      );
+      return !expiry.isAfter(DateTime.now());
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Saves active session upon successful login or registration.

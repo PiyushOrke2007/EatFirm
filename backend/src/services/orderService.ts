@@ -13,6 +13,9 @@ import {
   OrderFulfillmentStatus,
   CreateOrderInput,
   CancelOrderInput,
+  OrderTrackingResponse,
+  OrderTrackingLocationModel,
+  RecordTrackingLocationInput,
 } from '../models/order.js';
 import { toPaise, fromPaise } from '../utils/money.js';
 import { logAuditEvent } from './auditService.js';
@@ -674,6 +677,16 @@ export class OrderService {
         throw new ForbiddenError('You can only update orders for your restaurant');
       }
 
+      // Enforce role-based state update boundaries (TRACK-02, TRACK-04)
+      if (userRole === 'DELIVERY_PARTNER') {
+        // Delivery partners are only authorized to update pickup (OUT_FOR_DELIVERY) and drop (DELIVERED)
+        if (newStatus !== 'OUT_FOR_DELIVERY' && newStatus !== 'DELIVERED') {
+          throw new ForbiddenError(
+            'Delivery partners can only update orders to OUT_FOR_DELIVERY or DELIVERED'
+          );
+        }
+      }
+
       const allowedNext = validTransitions[order.fulfillment_status as OrderFulfillmentStatus] || [];
       if (!allowedNext.includes(newStatus)) {
         throw new ValidationError(
@@ -704,5 +717,192 @@ export class OrderService {
     }
 
     return this.getOrderById(userId, userRole, orderId);
+  }
+
+  /**
+   * Retrieves real-time tracking timeline and partner location telemetry for an order (SRS TRACK-1..4).
+   * Authorized for Customer (order owner), Restaurant Admin (restaurant owner), Delivery Partner, and System Admin.
+   */
+  static async getOrderTracking(
+    userId: string,
+    userRole: string,
+    orderId: string
+  ): Promise<OrderTrackingResponse> {
+    const orderRes = await pool.query(
+      `SELECT o.*,
+              r.name as restaurant_name,
+              r.address as restaurant_address,
+              r.owner_id as restaurant_owner_id,
+              r.latitude as restaurant_latitude,
+              r.longitude as restaurant_longitude,
+              r.estimated_delivery_mins as restaurant_est_delivery_mins
+       FROM orders o
+       JOIN restaurants r ON o.restaurant_id = r.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+
+    if (orderRes.rows.length === 0) {
+      throw new NotFoundError('Order not found');
+    }
+
+    const orderRow = orderRes.rows[0];
+
+    // Ownership & Authorization check (TRK-01, TRK-02)
+    if (userRole === 'CUSTOMER' && orderRow.customer_id !== userId) {
+      throw new ForbiddenError('You are not authorized to track this order');
+    }
+    if (userRole === 'RESTAURANT_ADMIN' && orderRow.restaurant_owner_id !== userId) {
+      throw new ForbiddenError('You do not own the restaurant for this order');
+    }
+
+    // 1. Fetch full chronological status timeline
+    const timelineRes = await pool.query(
+      `SELECT * FROM order_status_events WHERE order_id = $1 ORDER BY created_at ASC`,
+      [orderId]
+    );
+    const statusTimeline: OrderStatusEventModel[] = timelineRes.rows.map((row) => ({
+      id: row.id,
+      orderId: row.order_id,
+      fromStatus: row.from_status,
+      toStatus: row.to_status,
+      actorUserId: row.actor_user_id,
+      actorRole: row.actor_role,
+      note: row.note,
+      createdAt: row.created_at.toISOString(),
+    }));
+
+    // 2. Fetch latest telemetry location
+    const locRes = await pool.query(
+      `SELECT * FROM order_tracking_locations
+       WHERE order_id = $1
+       ORDER BY recorded_at DESC
+       LIMIT 1`,
+      [orderId]
+    );
+
+    let latestLocation: OrderTrackingLocationModel | null = null;
+    let assignedPartner: { id: string; name: string; phone: string } | null = null;
+
+    if (locRes.rows.length > 0) {
+      const locRow = locRes.rows[0];
+      latestLocation = {
+        id: locRow.id,
+        orderId: locRow.order_id,
+        deliveryPartnerId: locRow.delivery_partner_id,
+        latitude: parseFloat(locRow.latitude),
+        longitude: parseFloat(locRow.longitude),
+        headingDegrees: locRow.heading_degrees !== null ? parseFloat(locRow.heading_degrees) : null,
+        speedMetersPerSec: locRow.speed_meters_per_sec !== null ? parseFloat(locRow.speed_meters_per_sec) : null,
+        accuracyMeters: locRow.accuracy_meters !== null ? parseFloat(locRow.accuracy_meters) : null,
+        recordedAt: locRow.recorded_at.toISOString(),
+      };
+
+      const partnerUserRes = await pool.query(
+        `SELECT id, name, phone FROM users WHERE id = $1`,
+        [locRow.delivery_partner_id]
+      );
+      if (partnerUserRes.rows.length > 0) {
+        assignedPartner = {
+          id: partnerUserRes.rows[0].id,
+          name: partnerUserRes.rows[0].name,
+          phone: partnerUserRes.rows[0].phone,
+        };
+      }
+    } else {
+      // Check if any payment was collected by a delivery partner or if an event was created by one
+      const partnerEventRes = await pool.query(
+        `SELECT u.id, u.name, u.phone
+         FROM order_status_events ose
+         JOIN users u ON ose.actor_user_id = u.id
+         WHERE ose.order_id = $1 AND ose.actor_role = 'DELIVERY_PARTNER'
+         ORDER BY ose.created_at DESC
+         LIMIT 1`,
+        [orderId]
+      );
+      if (partnerEventRes.rows.length > 0) {
+        assignedPartner = {
+          id: partnerEventRes.rows[0].id,
+          name: partnerEventRes.rows[0].name,
+          phone: partnerEventRes.rows[0].phone,
+        };
+      }
+    }
+
+    return {
+      orderId: orderRow.id,
+      publicOrderNumber: orderRow.public_order_number,
+      fulfillmentStatus: orderRow.fulfillment_status,
+      paymentStatus: orderRow.payment_status,
+      paymentMethod: orderRow.payment_method,
+      restaurantId: orderRow.restaurant_id,
+      restaurantName: orderRow.restaurant_name,
+      restaurantAddress: orderRow.restaurant_address,
+      restaurantLatitude: orderRow.restaurant_latitude !== null ? parseFloat(orderRow.restaurant_latitude) : null,
+      restaurantLongitude: orderRow.restaurant_longitude !== null ? parseFloat(orderRow.restaurant_longitude) : null,
+      deliveryAddress: orderRow.delivery_address_snapshot,
+      recipientName: orderRow.customer_name_snapshot,
+      recipientPhone: orderRow.customer_phone_snapshot,
+      estimatedDeliveryMins: orderRow.restaurant_est_delivery_mins ?? 30,
+      assignedDeliveryPartner: assignedPartner,
+      latestLocation,
+      statusTimeline,
+      lastUpdatedAt: orderRow.updated_at.toISOString(),
+    };
+  }
+
+  /**
+   * Records live GPS telemetry location for an order (SRS TRACK-3, NFR-6).
+   * Permitted for DELIVERY_PARTNER and SYSTEM_ADMIN only.
+   */
+  static async recordTrackingLocation(
+    userId: string,
+    userRole: string,
+    orderId: string,
+    input: RecordTrackingLocationInput
+  ): Promise<OrderTrackingLocationModel> {
+    const { latitude, longitude, headingDegrees, speedMetersPerSec, accuracyMeters } = input;
+
+    if (latitude < -90.0 || latitude > 90.0) {
+      throw new ValidationError('Latitude must be between -90 and 90 degrees');
+    }
+    if (longitude < -180.0 || longitude > 180.0) {
+      throw new ValidationError('Longitude must be between -180 and 180 degrees');
+    }
+
+    // Verify order exists
+    const orderRes = await pool.query(`SELECT id, fulfillment_status FROM orders WHERE id = $1`, [orderId]);
+    if (orderRes.rows.length === 0) {
+      throw new NotFoundError('Order not found');
+    }
+
+    const insRes = await pool.query(
+      `INSERT INTO order_tracking_locations (
+        order_id, delivery_partner_id, latitude, longitude, heading_degrees, speed_meters_per_sec, accuracy_meters, recorded_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      RETURNING *`,
+      [
+        orderId,
+        userId,
+        latitude,
+        longitude,
+        headingDegrees ?? null,
+        speedMetersPerSec ?? null,
+        accuracyMeters ?? null,
+      ]
+    );
+
+    const row = insRes.rows[0];
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      deliveryPartnerId: row.delivery_partner_id,
+      latitude: parseFloat(row.latitude),
+      longitude: parseFloat(row.longitude),
+      headingDegrees: row.heading_degrees !== null ? parseFloat(row.heading_degrees) : null,
+      speedMetersPerSec: row.speed_meters_per_sec !== null ? parseFloat(row.speed_meters_per_sec) : null,
+      accuracyMeters: row.accuracy_meters !== null ? parseFloat(row.accuracy_meters) : null,
+      recordedAt: row.recorded_at.toISOString(),
+    };
   }
 }

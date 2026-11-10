@@ -16,6 +16,7 @@ class ApiClient {
 
   // Token provider hook for Module 02 authentication integration
   String? Function()? _authTokenProvider;
+  Future<void> Function()? _onUnauthorized;
 
   ApiClient({
     String? baseUrl,
@@ -26,6 +27,10 @@ class ApiClient {
 
   void setAuthTokenProvider(String? Function()? provider) {
     _authTokenProvider = provider;
+  }
+
+  void setUnauthorizedHandler(Future<void> Function()? handler) {
+    _onUnauthorized = handler;
   }
 
   /// Generates a random client correlation ID if none is supplied.
@@ -260,6 +265,10 @@ class ApiClient {
           fieldErrors: fieldErrors,
         );
       case 401:
+        final onUnauthorized = _onUnauthorized;
+        if (onUnauthorized != null) {
+          unawaited(onUnauthorized());
+        }
         throw UnauthorizedException(
           message: errorMessage,
           code: errorCode,

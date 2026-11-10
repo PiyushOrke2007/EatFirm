@@ -51,7 +51,6 @@ orderRouter.post(
     }
   }
 );
-
 /**
  * GET /api/v1/orders
  * Lists historical orders for the current authenticated user (customer or restaurant owner).
@@ -133,14 +132,23 @@ orderRouter.post(
   }
 );
 
+const recordLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  headingDegrees: z.number().min(0).max(360).optional(),
+  speedMetersPerSec: z.number().min(0).optional(),
+  accuracyMeters: z.number().min(0).optional(),
+});
+
 /**
  * PATCH /api/v1/orders/:id/status
- * Updates order fulfillment status (Restricted to Restaurant Admin or System Admin).
+ * Updates order fulfillment status (SRS REST-3, DEL-3, TRACK-02, TRACK-04).
+ * Permitted for RESTAURANT_ADMIN, DELIVERY_PARTNER, and SYSTEM_ADMIN.
  */
 orderRouter.patch(
   '/orders/:id/status',
   requireAuth,
-  requireRoles('RESTAURANT_ADMIN', 'SYSTEM_ADMIN'),
+  requireRoles('RESTAURANT_ADMIN', 'DELIVERY_PARTNER', 'SYSTEM_ADMIN'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -153,6 +161,54 @@ orderRouter.patch(
         parsed.note
       );
       sendSuccess(res, order, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/orders/:id/tracking
+ * Retrieves real-time tracking timeline and partner location telemetry (SRS TRACK-1..4).
+ */
+orderRouter.get(
+  '/orders/:id/tracking',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const tracking = await OrderService.getOrderTracking(
+        req.user!.id,
+        req.user!.role,
+        orderId
+      );
+      sendSuccess(res, tracking, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/orders/:id/tracking/location
+ * Records live GPS telemetry location for an order (SRS TRACK-3, NFR-6).
+ * Restricted to DELIVERY_PARTNER and SYSTEM_ADMIN.
+ */
+orderRouter.post(
+  '/orders/:id/tracking/location',
+  requireAuth,
+  requireRoles('DELIVERY_PARTNER', 'SYSTEM_ADMIN'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const parsed = recordLocationSchema.parse(req.body);
+      const recorded = await OrderService.recordTrackingLocation(
+        req.user!.id,
+        req.user!.role,
+        orderId,
+        parsed
+      );
+      sendSuccess(res, recorded, 201);
     } catch (err) {
       next(err);
     }

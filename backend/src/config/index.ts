@@ -10,6 +10,7 @@ const configSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
   HOST: z.string().default('0.0.0.0'),
+  DISCOVERY_PORT: z.coerce.number().int().positive().default(5001),
 
   DB_HOST: z.string().min(1).default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().positive().default(5432),
@@ -58,4 +59,3 @@ export function getSanitizedConfig(cfg: Config = config): Record<string, unknown
     JWT_SECRET: '********',
   };
 }
-

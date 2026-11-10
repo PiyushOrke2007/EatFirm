@@ -14,7 +14,7 @@ void main() async {
   final sessionManager = SessionManager();
   await sessionManager.init();
 
-  final apiClient = ApiClient();
+  final apiClient = ApiClient(baseUrl: await AppConstants.resolveApiBaseUrl());
   final authService = AuthApiService(
     apiClient: apiClient,
     sessionManager: sessionManager,

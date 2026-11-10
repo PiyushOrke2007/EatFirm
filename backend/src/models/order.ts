@@ -85,3 +85,48 @@ export interface UpdateOrderStatusInput {
   note?: string;
 }
 
+export interface OrderTrackingLocationModel {
+  id: string;
+  orderId: string;
+  deliveryPartnerId: string;
+  latitude: number;
+  longitude: number;
+  headingDegrees: number | null;
+  speedMetersPerSec: number | null;
+  accuracyMeters: number | null;
+  recordedAt: string;
+}
+
+export interface RecordTrackingLocationInput {
+  latitude: number;
+  longitude: number;
+  headingDegrees?: number;
+  speedMetersPerSec?: number;
+  accuracyMeters?: number;
+}
+
+export interface OrderTrackingResponse {
+  orderId: string;
+  publicOrderNumber: string;
+  fulfillmentStatus: OrderFulfillmentStatus;
+  paymentStatus: OrderPaymentStatus;
+  paymentMethod: OrderPaymentMethod;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantAddress: string;
+  restaurantLatitude: number | null;
+  restaurantLongitude: number | null;
+  deliveryAddress: string;
+  recipientName: string;
+  recipientPhone: string;
+  estimatedDeliveryMins: number;
+  assignedDeliveryPartner: {
+    id: string;
+    name: string;
+    phone: string;
+  } | null;
+  latestLocation: OrderTrackingLocationModel | null;
+  statusTimeline: OrderStatusEventModel[];
+  lastUpdatedAt: string;
+}
+

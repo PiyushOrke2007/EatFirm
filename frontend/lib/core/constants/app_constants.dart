@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../network/lan_discovery.dart';
+
 /// Global constants for EatFirm client.
 class AppConstants {
   AppConstants._();
@@ -8,24 +10,49 @@ class AppConstants {
   static const String appTagline = 'Gourmet at your doorstep';
   static const String appVersion = '1.0.0';
 
-  // Environment override: pass via --dart-define=API_URL=http://<IP>:5000/api/v1
+  // Override without changing source code:
+  // --dart-define=API_URL=http://<HOST>:5000/api/v1
   static const String _envApiUrl = String.fromEnvironment('API_URL');
+  static const int apiPort = 5000;
+  static const int discoveryPort = 5001;
 
-  // Network Defaults:
-  // - On Web: uses current host or http://localhost:5000/api/v1
-  // - On Physical Mobile / Any device on Wi-Fi: http://10.10.188.181:5000/api/v1
+  static Future<String> resolveApiBaseUrl() async {
+    if (_envApiUrl.isNotEmpty) {
+      return _envApiUrl;
+    }
+
+    if (!kIsWeb) {
+      final discoveredUrl = await discoverApiBaseUrl(
+        discoveryPort: discoveryPort,
+        apiPort: apiPort,
+      );
+      if (discoveredUrl != null) {
+        return discoveredUrl;
+      }
+    }
+
+    return defaultApiBaseUrl;
+  }
+
   static String get defaultApiBaseUrl {
     if (_envApiUrl.isNotEmpty) {
       return _envApiUrl;
     }
+
     if (kIsWeb) {
       final host = Uri.base.host;
-      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-        return 'http://$host:5000/api/v1';
+      if (host.isNotEmpty) {
+        return 'http://$host:$apiPort/api/v1';
       }
-      return 'http://localhost:5000/api/v1';
     }
-    return 'http://10.10.188.181:5000/api/v1';
+
+    // Physical devices or emulators on local network:
+    // Defaults to current laptop Wi-Fi IP (192.168.1.34)
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://192.168.1.34:$apiPort/api/v1';
+    }
+
+    return 'http://192.168.1.34:$apiPort/api/v1';
   }
 
   static const Duration defaultTimeout = Duration(seconds: 15);
